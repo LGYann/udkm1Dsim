@@ -1621,7 +1621,7 @@ class XrayDynMag(Xray):
 
         return self.S.get_hash(types=['xray', 'magnetic']) + '_' + make_hash_md5(param)
 
-    def set_incoming_polarization(self, pol_in_state):
+    def set_incoming_polarization(self, pol_in_state, theta=None, ellipticity=None):
         """set_incoming_polarization
 
         Sets the incoming polarization factor for circular +, circular -, sigma,
@@ -1629,21 +1629,33 @@ class XrayDynMag(Xray):
 
         Args:
             pol_in_state (int): incoming polarization state id.
+            theta (Quantity): azimuth angle of polarization (0 -> s) [deg]
+            ellipticity (float): ellipticity (+-1 -> circular left/right) 
 
         """
 
         self.pol_in_state = pol_in_state
-        if (self.pol_in_state == 1):  # circ +
-            self.pol_in = np.array([-np.sqrt(.5), -1j*np.sqrt(.5)], dtype=np.cfloat)
-        elif (self.pol_in_state == 2):  # circ -
-            self.pol_in = np.array([np.sqrt(.5), -1j*np.sqrt(.5)], dtype=np.cfloat)
-        elif (self.pol_in_state == 3):  # sigma
-            self.pol_in = np.array([1, 0], dtype=np.cfloat)
-        elif (self.pol_in_state == 4):  # pi
-            self.pol_in = np.array([0, 1], dtype=np.cfloat)
-        else:  # unpolarized
-            self.pol_in_state = 0  # catch any number and set state to 0
-            self.pol_in = np.array([np.sqrt(.5), np.sqrt(.5)], dtype=np.cfloat)
+        if theta is None or ellipticity is None:            
+            if (self.pol_in_state == 1):  # circ +
+                self.pol_in = np.array([-np.sqrt(.5), -1j*np.sqrt(.5)], dtype=np.cfloat)
+            elif (self.pol_in_state == 2):  # circ -
+                self.pol_in = np.array([np.sqrt(.5), -1j*np.sqrt(.5)], dtype=np.cfloat)
+            elif (self.pol_in_state == 3):  # sigma
+                self.pol_in = np.array([1, 0], dtype=np.cfloat)
+            elif (self.pol_in_state == 4):  # pi
+                self.pol_in = np.array([0, 1], dtype=np.cfloat)
+            else:  # unpolarized
+                self.pol_in_state = 0  # catch any number and set state to 0
+                self.pol_in = np.array([np.sqrt(.5), np.sqrt(.5)], dtype=np.cfloat)
+        else:
+            theta = theta.to('rad').magnitude
+            if ellipticity > 1 or ellipticity < -1:
+                raise ValueError('ellipticity must be -1 <= e <= +1')
+            else:
+                epsilon = np.arctan(ellipticity)
+            self.pol_in = np.array([np.cos(theta)*np.cos(epsilon) - 1j*np.sin(theta)*np.sin(epsilon),
+                                    np.sin(theta)*np.cos(epsilon) + 1j*np.cos(theta)*np.sin(epsilon)],
+                                   dtype=np.cfloat)
 
         self.disp_message('incoming polarizations set to: {:s}'.format(
             self.polarizations[self.pol_in_state]))
